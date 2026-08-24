@@ -1,4 +1,6 @@
 fn main() {
+    println!("cargo:rustc-link-arg=-n");
+    println!("cargo:rustc-link-arg=-N");
     println!("cargo:rustc-link-arg=-nostartfiles");
     println!("cargo:rustc-link-arg=-static");
     println!("cargo:rustc-link-arg=-no-pie");
@@ -10,4 +12,5 @@ fn main() {
 
     // Supprime la table des notes ELF inutiles (build-id)
     println!("cargo:rustc-link-arg=-Wl,--build-id=none");
+    println!("cargo:rustc-link-arg=-Wl,--no-dynamic-linker");
 }
