@@ -1,5 +1,4 @@
 fn main() {
-    println!("cargo:rustc-link-arg=-n");
     println!("cargo:rustc-link-arg=-N");
     println!("cargo:rustc-link-arg=-nostartfiles");
     println!("cargo:rustc-link-arg=-static");
@@ -12,5 +11,7 @@ fn main() {
 
     // Supprime la table des notes ELF inutiles (build-id)
     println!("cargo:rustc-link-arg=-Wl,--build-id=none");
+    // Le programme n'utilise pas le débogage d'exceptions ou de déroulage de pile.
+    println!("cargo:rustc-link-arg=-Wl,--no-eh-frame-hdr");
     println!("cargo:rustc-link-arg=-Wl,--no-dynamic-linker");
 }

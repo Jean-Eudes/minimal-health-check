@@ -3,6 +3,7 @@
 
 use core::panic::PanicInfo;
 
+use rustix::fd::AsFd;
 use rustix::io::{read, write};
 use rustix::net::sockopt::set_socket_reuseaddr;
 use rustix::net::{
@@ -17,35 +18,30 @@ fn panic(_: &PanicInfo<'_>) -> ! {
     loop {}
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    let listener = match socket(AddressFamily::INET6, SocketType::STREAM, None) {
-        Ok(listener) => listener,
-        Err(_) => exit_group(1),
-    };
-
-    // Activer la réutilisation d'adresse immédiatement après la création du socket
-    if set_socket_reuseaddr(&listener, true).is_err() {
-        exit_group(1);
-    }
+fn setup_listener() -> Result<rustix::fd::OwnedFd, rustix::io::Errno> {
+    let listener = socket(AddressFamily::INET6, SocketType::STREAM, None)?;
+    set_socket_reuseaddr(&listener, true)?;
 
     let address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 8080, 0, 0);
-    if bind(&listener, &address).is_err() {
-        exit_group(1);
-    }
+    bind(&listener, &address)?;
+    listen(&listener, 128)?;
 
-    if listen(&listener, 128).is_err() {
-        exit_group(1);
-    }
+    Ok(listener)
+}
+
+fn serve_connection(connection: rustix::fd::BorrowedFd<'_>) {
+    let mut request = [0u8; 1024];
+    let _ = read(connection, &mut request);
+    let _ = write(connection, RESPONSE);
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn _start() -> ! {
+    let listener = setup_listener().unwrap_or_else(|_| exit_group(1));
 
     loop {
-        let connection = match accept(&listener) {
-            Ok(connection) => connection,
-            Err(_) => continue,
-        };
-
-        let mut request = [0u8; 1024];
-        let _ = read(&connection, &mut request);
-        let _ = write(&connection, RESPONSE);
+        if let Ok(connection) = accept(&listener) {
+            serve_connection(connection.as_fd());
+        }
     }
 }
