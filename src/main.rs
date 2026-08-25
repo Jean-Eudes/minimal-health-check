@@ -10,7 +10,7 @@ use rustix::net::{
 };
 use rustix::runtime::exit_group;
 
-const RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK";
+const RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\n\r\nOK";
 
 #[panic_handler]
 fn panic(_: &PanicInfo<'_>) -> ! {
@@ -46,13 +46,6 @@ pub extern "C" fn _start() -> ! {
 
         let mut request = [0u8; 1024];
         let _ = read(&connection, &mut request);
-
-        let mut written = 0;
-        while written < RESPONSE.len() {
-            match write(&connection, &RESPONSE[written..]) {
-                Ok(0) | Err(_) => break,
-                Ok(count) => written += count,
-            }
-        }
+        let _ = write(&connection, RESPONSE);
     }
 }
