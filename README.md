@@ -17,7 +17,27 @@ Le projet évite plusieurs éléments habituellement présents dans un programme
 
 Le programme n’utilise pas directement la `libc`. Grâce à `no_std` et à `rustix`, il demande directement au système d’exploitation les ressources dont il a besoin, notamment pour créer et utiliser la socket TCP. Le binaire est donc autonome et peut être placé dans une image Docker `scratch`, sans ajouter une image Linux complète ni les bibliothèques habituelles.
 
-Il y a encore moyen d'optimiser en supprimant les sections inutiles dans le binaire produit (par exemple la section comment), se qui permettrait de gagner encore quelques octets.
+## Compiler
+
+Il faut d’abord compiler le projet en mode release :
+
+```shell
+cargo build --release
+```
+
+Le binaire est ensuite disponible dans `target/release/health_http`.
+
+Pour réduire encore sa taille, on peut utiliser `sstrip` :
+
+```shell
+sstrip target/release/health_http
+```
+
+On peut vérifier sa taille avec :
+
+```shell
+stat -c '%s octets' target/release/health_http
+```
 
 ```shell
 podman images | grep health
