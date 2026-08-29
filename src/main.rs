@@ -29,15 +29,22 @@ fn setup_listener() -> Result<rustix::fd::OwnedFd, rustix::io::Errno> {
     Ok(listener)
 }
 
+use core::mem::MaybeUninit; // Permet de déclarer de la mémoire non initialisée
+
 fn serve_connection(connection: rustix::fd::BorrowedFd<'_>) {
-    let mut request = [0u8; 1024];
+    // 1. On dit à Rust de NE PAS remplir la mémoire de zéros
+    let mut request = unsafe { MaybeUninit::<[u8; 1024]>::uninit().assume_init() };
     let _ = read(connection, &mut request);
     let _ = write(connection, RESPONSE);
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    let listener = setup_listener().unwrap_or_else(|_| exit_group(1));
+    // 2. Utilisation d'un match direct pour éviter la sur-optimisation de unwrap_or_else
+    let listener = match setup_listener() {
+        Ok(l) => l,
+        Err(_) => exit_group(1),
+    };
 
     loop {
         if let Ok(connection) = accept(&listener) {

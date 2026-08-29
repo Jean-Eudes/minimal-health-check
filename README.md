@@ -43,3 +43,10 @@ stat -c '%s octets' target/release/health_http
 podman images | grep health
 localhost/health-api                                                                    latest             23089bbfb655  14 minutes ago  5.91 kB
 ```
+
+
+
+Version optimisé avec panic_abort:
+```shell
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort" cargo build --release -Z build-std=core,panic_abort --target x86_64-unknown-linux-gnu
+```
