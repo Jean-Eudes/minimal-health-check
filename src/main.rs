@@ -2,7 +2,6 @@
 #![no_std]
 
 use core::mem::MaybeUninit;
-use core::panic::PanicInfo;
 
 use rustix::fd::AsFd;
 use rustix::io::{read, write};
@@ -12,11 +11,6 @@ use rustix::net::{
 };
 
 const RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\n\r\nOK";
-
-#[panic_handler]
-fn panic(_: &PanicInfo<'_>) -> ! {
-    loop {}
-}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
