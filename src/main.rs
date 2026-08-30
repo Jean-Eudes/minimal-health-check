@@ -1,15 +1,15 @@
-#![no_std]
 #![no_main]
+#![no_std]
 
+use core::mem::MaybeUninit;
 use core::panic::PanicInfo;
 
 use rustix::fd::AsFd;
 use rustix::io::{read, write};
 use rustix::net::sockopt::set_socket_reuseaddr;
 use rustix::net::{
-    AddressFamily, Ipv6Addr, SocketAddrV6, SocketType, accept, bind, listen, socket,
+    AddressFamily, Ipv4Addr, SocketAddrV4, SocketType, accept, bind, listen, socket,
 };
-use rustix::runtime::exit_group;
 
 const RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\n\r\nOK";
 
@@ -18,37 +18,28 @@ fn panic(_: &PanicInfo<'_>) -> ! {
     loop {}
 }
 
-fn setup_listener() -> Result<rustix::fd::OwnedFd, rustix::io::Errno> {
-    let listener = socket(AddressFamily::INET6, SocketType::STREAM, None)?;
-    set_socket_reuseaddr(&listener, true)?;
-
-    let address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 8080, 0, 0);
-    bind(&listener, &address)?;
-    listen(&listener, 128)?;
-
-    Ok(listener)
-}
-
-use core::mem::MaybeUninit; // Permet de déclarer de la mémoire non initialisée
-
-fn serve_connection(connection: rustix::fd::BorrowedFd<'_>) {
-    // 1. On dit à Rust de NE PAS remplir la mémoire de zéros
-    let mut request = unsafe { MaybeUninit::<[u8; 1024]>::uninit().assume_init() };
-    let _ = read(connection, &mut request);
-    let _ = write(connection, RESPONSE);
-}
-
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    // 2. Utilisation d'un match direct pour éviter la sur-optimisation de unwrap_or_else
-    let listener = match setup_listener() {
-        Ok(l) => l,
-        Err(_) => exit_group(1),
-    };
+    // 1. IPv4 strict (AF_INET) + Pas de gestion d'erreur (on force l'extraction via un unsafe/unwrap sauvage)
+    let listener =
+        unsafe { socket(AddressFamily::INET, SocketType::STREAM, None).unwrap_unchecked() };
 
+    // Réutilisation du port
+    let _ = set_socket_reuseaddr(&listener, true);
+
+    // Écoute sur 0.0.0.0:8080 (Structure IPv4 minuscule)
+    let address = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 8080);
+    let _ = bind(&listener, &address);
+    let _ = listen(&listener, 128);
+
+    let request = MaybeUninit::<[u8; 1024]>::uninit();
+    let mut request = unsafe { request.assume_init() };
+    // Boucle infinie brute
     loop {
-        if let Ok(connection) = accept(&listener) {
-            serve_connection(connection.as_fd());
-        }
+        // On accept sans vérifier si la connexion est valide
+        let connection = unsafe { accept(&listener).unwrap_unchecked() };
+        let fd = connection.as_fd();
+        let _ = read(fd, &mut request);
+        let _ = write(fd, RESPONSE);
     }
 }
