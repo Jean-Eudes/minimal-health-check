@@ -3,7 +3,6 @@
 
 use core::mem::MaybeUninit;
 
-use rustix::fd::AsFd;
 use rustix::io::{read, write};
 use rustix::net::sockopt::set_socket_reuseaddr;
 use rustix::net::{
@@ -26,14 +25,13 @@ pub extern "C" fn _start() -> ! {
     let _ = bind(&listener, &address);
     let _ = listen(&listener, 128);
 
-    let request = MaybeUninit::<[u8; 1024]>::uninit();
+    let request = MaybeUninit::<[u8; 120]>::uninit();
     let mut request = unsafe { request.assume_init() };
     // Boucle infinie brute
     loop {
         // On accept sans vérifier si la connexion est valide
         let connection = unsafe { accept(&listener).unwrap_unchecked() };
-        let fd = connection.as_fd();
-        let _ = read(fd, &mut request);
-        let _ = write(fd, RESPONSE);
+        let _ = read(&connection, &mut request);
+        let _ = write(&connection, RESPONSE);
     }
 }
