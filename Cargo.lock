@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "health_http"
+name = "health-http"
 version = "0.1.0"
 dependencies = [
  "rustix",
