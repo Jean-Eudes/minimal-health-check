@@ -12,41 +12,34 @@ Le projet évite plusieurs éléments habituellement présents dans un programme
 - `no_main` permet d’utiliser directement un point d’entrée personnalisé ;
 - `rustix` le coeur de l'implementation, permet de gerer certaines features de la libc, comme la manipulation de file descriptor, ou l'ouverture de socket, sans la libC ;
 - la compilation release optimise la taille, supprime les symboles inutiles et utilise le LTO ;
-- `panic = "abort"` évite d’embarquer le mécanisme de récupération des erreurs ;
-- l’image Docker utilise `scratch`, donc elle ne contient pas de système de fichiers ou de runtime superflu.
+- `panic = "immediate_abort"` évite d’embarquer le mécanisme de récupération des erreurs (vient de la nightly) ;
+- l’image Docker utilise `scratch`, donc elle ne contient pas de système de fichiers ou de runtime superflux.
 
 Le programme n’utilise pas directement la `libc`. Grâce à `no_std` et à `rustix`, il demande directement au système d’exploitation les ressources dont il a besoin, notamment pour créer et utiliser la socket TCP. Le binaire est donc autonome et peut être placé dans une image Docker `scratch`, sans ajouter une image Linux complète ni les bibliothèques habituelles.
 
-## Compiler
+## Compilation
 
-Il faut d’abord compiler le projet en mode release :
-
-```shell
-cargo build --release
-```
-
-Le binaire est ensuite disponible dans `target/release/health_http`.
-
-Pour réduire encore sa taille, on peut utiliser `sstrip` :
+La compilation minimale utilise le nightly et reconstruit `core` et
+`panic_abort` pour éviter d'embarquer le runtime standard :
 
 ```shell
-sstrip target/release/health_http
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort" \\
+  cargo build --release -Z build-std=core,panic_abort \\
+  --target x86_64-unknown-linux-gnu
 ```
 
-On peut vérifier sa taille avec :
+Le binaire est ensuite disponible dans
+`target/x86_64-unknown-linux-gnu/release/health-http`.
+
+Pour produire l'artefact ELF minimal, appliquer `sstrip` séparément :
 
 ```shell
-stat -c '%s octets' target/release/health_http
+sstrip target/x86_64-unknown-linux-gnu/release/health-http
+stat -c '%s octets' target/x86_64-unknown-linux-gnu/release/health-http
 ```
 
-```shell
-podman images | grep health
-localhost/health-api                                                                    latest             23089bbfb655  14 minutes ago  5.91 kB
-```
+Cette variante produit un ELF à un seul segment `PT_LOAD`. `sstrip` retire
+ensuite `.comment`, la table des sections et les autres métadonnées inutiles
+au chargeur Linux. La suppression de `PT_GNU_STACK` rend la pile exécutable :
+c'est un compromis volontaire en faveur de la taille.
 
-
-
-Version optimisé avec panic_abort:
-```shell
-RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort" cargo build --release -Z build-std=core,panic_abort --target x86_64-unknown-linux-gnu
-```
