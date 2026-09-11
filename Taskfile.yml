@@ -1,0 +1,26 @@
+version: "3"
+
+env:
+  RUSTC_BOOTSTRAP: "1"
+  RUSTFLAGS: "-Zunstable-options -Cpanic=immediate-abort"
+
+vars:
+  BIN: target/x86_64-unknown-linux-gnu/release/health-http
+
+tasks:
+  default:
+    desc: "Build release minimal + sstrip + taille"
+    deps:
+      - build
+
+  build:
+    desc: "cargo build --release (build-std core,panic_abort) + sstrip + stat"
+    cmds:
+      - cargo build --release -Z build-std=core,panic_abort --target x86_64-unknown-linux-gnu
+      - sstrip {{.BIN}}
+      - stat -c '%s octets' {{.BIN}}
+
+  clean:
+    desc: "nettoyage complet"
+    cmds:
+      - cargo clean
