@@ -14,14 +14,16 @@ SECTIONS
 {
     . = 0x200000 + SIZEOF_HEADERS;
 
-    .rodata : ALIGN(1)
+    .text : SUBALIGN(1)
     {
         *(.rodata .rodata.*)
+        *(.text .text.*)
     } :load
 
-    .text : ALIGN(1)
+    .data : SUBALIGN(1)
     {
-        *(.text .text.*)
+        *(.data .data.*)
+        *(.sdata .sdata.*)
     } :load
 
     /DISCARD/ :
