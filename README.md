@@ -23,7 +23,7 @@ La compilation minimale utilise le nightly et reconstruit `core` et
 `panic_abort` pour éviter d'embarquer le runtime standard :
 
 ```shell
-RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort" \\
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort -Cllvm-args=-align-all-blocks=1" \\
   cargo build --release -Z build-std=core,panic_abort \\
   --target x86_64-unknown-linux-gnu
 ```

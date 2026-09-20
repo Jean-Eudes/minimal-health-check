@@ -9,7 +9,7 @@ use rustix::net::{
     AddressFamily, Ipv4Addr, SocketAddrV4, SocketType, accept, bind, listen, socket,
 };
 
-const RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\n\r\nOK";
+const RESPONSE: &[u8] = b"HTTP/1.1 200\r\n\r\nOK";
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
@@ -23,7 +23,7 @@ pub extern "C" fn _start() -> ! {
     // Écoute sur 0.0.0.0:8080 (Structure IPv4 minuscule)
     let address = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 8080);
     let _ = bind(&listener, &address);
-    let _ = listen(&listener, 128);
+    let _ = listen(&listener, 0);
 
     let request = MaybeUninit::<[u8; 120]>::uninit();
     let mut request = unsafe { request.assume_init() };
